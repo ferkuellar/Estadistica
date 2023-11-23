@@ -1,0 +1,304 @@
+---
+format: html
+editor: visual
+---
+
+```{r}
+library(ggplot2)
+
+```
+
+Cargar los datos en un dataframe llamado: airbnb
+
+```{r}
+airbnb<-read.csv('data//airbnb.csv',sep = ',', stringsAsFactors = T)
+```
+
+Mostrar las primeras 6 filas del dataframe
+
+```{r}
+head(airbnb)
+```
+
+Renombrar las columnas de la siguiente forma:
+
+| Nombre original        | Nuevo nombre   |
+|------------------------|----------------|
+| Zipcode                | CodigoPostal   |
+| Neighbourhood.Cleansed | Barrio         |
+| Property.Type          | TipoPropiedad  |
+| Room.Type              | TipoAlquiler   |
+| Accommodates           | MaxOcupantes   |
+| Bathrooms              | NumBanyos      |
+| Bedrooms               | NumDormitorios |
+| Beds                   | NumCamas       |
+| Bed.Type               | TipoCama       |
+| Amenities              | Comodidades    |
+| Square.Feet            | PiesCuadrados  |
+| Price                  | Precio         |
+| Review.Scores.Rating   | Puntuacion     |
+
+```{r}
+# Nuevo vector de nombres para las columnas
+newnames <- c("CodigoPostal", "Barrio", "TipoPropiedad", "TipoAlquiler", "MaxOcupantes", 
+              "NumBanyos", "NumDormitorios", "NumCamas", "TipoCama", "Comodidades", 
+              "PiesCuadrados", "Precio", "Puntuacion")
+
+if (length(newnames) == length(names(airbnb))) {
+  names(airbnb) <- newnames
+} else {
+  stop("El número de nombres nuevos no coincide con el número de columnas en el dataframe.")
+}
+
+names(airbnb)
+```
+
+1.  Crea una nueva columna llamada MetrosCuadrados a partir de la columna PiesCuadrados.
+
+Ayuda: 1 pie cuadrado son 0,092903 metros cuadrdados
+
+```{r}
+# Crear columna MetrosCuadrados
+
+airbnb$MetrosCuadrados <- airbnb$PiesCuadrados * 0.092903
+
+head(airbnb)
+```
+
+------------------------------------------------------------------------
+
+2.  Miremos el código postal. Es una variable con entradas erroneas. Hay valores como '','-' y '28' que deberían ser considerados como NA. Así mismo también debería ser NA todos los que no compiencen por 28, ya que estamos con códigos postales de Madrid
+
+```{r}
+
+# Códigos postales más comunes
+sort(table(airbnb$CodigoPostal), decreasing = TRUE)[1:5]
+
+# Códigos postales menos comunes
+sort(table(airbnb$CodigoPostal), decreasing = FALSE)[1:5]
+```
+
+```{r}
+# Asegúrate de que CodigoPostal es un caracter
+airbnb$CodigoPostal <- as.character(airbnb$CodigoPostal)
+
+# Función para limpiar y corregir cada código postal
+limpiar_codigo_postal <- function(codigo) {
+  # Manejar valores NA
+  if (is.na(codigo)) {
+    return(NA)
+  }
+
+  # Convertir valores erróneos a NA y verificar que comiencen con "28"
+  if (codigo %in% c('', '-', '28') || !startsWith(codigo, "28")) {
+    return(NA)
+  } else {
+    return(codigo)
+  }
+}
+
+# Aplicar la función a la columna CodigoPostal
+airbnb$CodigoPostal <- sapply(airbnb$CodigoPostal, limpiar_codigo_postal)
+
+# Verificar los cambios
+head(airbnb$CodigoPostal)
+
+
+```
+
+
+2.a El código postal 28002, 28004 y 28051 tienen entradas repetidas. Por ejemplo las entradas 28002\n20882 deberían ir dentro de 28002
+
+```{r}
+# Asegúrate de que CodigoPostal es un caracter
+airbnb$CodigoPostal <- as.character(airbnb$CodigoPostal)
+
+# Función para limpiar y corregir cada código postal
+limpiar_codigo_postal <- function(codigo) {
+  # Manejar valores NA
+  if (is.na(codigo)) {
+    return(NA)
+  }
+
+  # Dividir los códigos postales en caso de múltiples códigos y tomar el primero
+  codigos_separados <- strsplit(codigo, "\n")[[1]]
+  primer_codigo <- codigos_separados[1]
+
+  # Convertir valores erróneos a NA y verificar que comiencen con "28"
+  if (primer_codigo %in% c('', '-', '28') || !startsWith(primer_codigo, "28")) {
+    return(NA)
+  } else {
+    return(primer_codigo)
+  }
+}
+
+# Aplicar la función a la columna CodigoPostal
+airbnb$CodigoPostal <- sapply(airbnb$CodigoPostal, limpiar_codigo_postal)
+
+# Verificar los cambios
+head(airbnb$CodigoPostal)
+
+```
+
+
+2.b El codigo 2804 debería ser 28004, 2805 deberia ser 28005 y 2815 juncto con 2815 debería ser 28015
+
+2.c Limpia los datos de la columna Codigo Postal
+
+
+------------------------------------------------------------------------
+
+3.  Una vez limpios los datos ¿Cuales son los códigos postales que tenemos?
+
+```{r}
+# Ver los códigos postales únicos en la columna CodigoPostal
+codigos_postales_unicos <- unique(airbnb$CodigoPostal)
+
+# Mostrar los códigos postales únicos
+codigos_postales_unicos
+
+```
+
+------------------------------------------------------------------------
+
+4.  ¿Cuales son los 5 códigos postales con más entradas? ¿Y con menos? ¿Cuantas entradas tienen?
+
+```{r}
+# Contar las ocurrencias de cada código postal
+conteo_codigos_postales <- table(airbnb$CodigoPostal)
+```
+
+```{r}
+# Convertir a un dataframe
+df_conteo <- as.data.frame(conteo_codigos_postales)
+```
+
+```{r}
+# Nombrar las columnas
+names(df_conteo) <- c("CodigoPostal", "Conteo")
+```
+
+```{r}
+# Encontrar los 5 códigos postales con más entradas
+top_5_mas <- df_conteo[order(-df_conteo$Conteo), ][1:5, ]
+```
+
+```{r}
+# Encontrar los 5 códigos postales con menos entradas
+top_5_menos <- df_conteo[order(df_conteo$Conteo), ][1:5, ]
+```
+
+```{r}
+# Mostrar los resultados
+top_5_mas
+
+```
+
+```{r}
+top_5_menos
+```
+------------------------------------------------------------------------
+
+5.  ¿Cuales son los barrios que hay en el código postal 28012?
+
+------------------------------------------------------------------------
+
+6.  ¿Cuantas entradas hay en cada uno de esos barrios para el codigo postal 28012?
+
+------------------------------------------------------------------------
+
+7.  ¿Cuantos barrios hay en todo el dataset airbnb? ¿Cuales son?
+
+------------------------------------------------------------------------
+
+8.  ¿Cuales son los 5 barrios que tienen mayor número entradas?
+
+------------------------------------------------------------------------
+
+9.  ¿Cuantos Tipos de Alquiler diferentes hay? ¿Cuales son? ¿Cuantas entradas en el dataframe hay por cada tipo?
+
+Muestra el diagrama de cajas del precio para cada uno de los diferentes Tipos de Alquiler
+
+------------------------------------------------------------------------
+
+10. Cual es el precio medio de alquiler de cada uno, la diferencia que hay ¿es estadísticamente significativa? ¿Con que test lo comprobarías?
+
+------------------------------------------------------------------------
+
+11. Filtra el dataframe cuyos tipo de alquiler sea 'Entire home/apt' y guardalo en un dataframe llamado *airbnb_entire*. Estas serán las entradas que tienen un alquiler del piso completo.
+
+------------------------------------------------------------------------
+
+12. ¿Cuales son los 5 barrios que tienen un mayor número de apartamentos enteros en alquiler? Nota: Mirar solo en airbnb_entire. A partir de este punto y hasta que se diga lo contrario partiremos de airbnb_entire.
+
+------------------------------------------------------------------------
+
+13. ¿Cuales son los 5 barrios que tienen un mayor precio medio de alquiler para apartamentos enteros (es decir, del dataframe airbnb_entire)? ¿Cual es su precio medio?
+
+Ayuda: Usa la función aggregate `aggregate(.~colname,df,mean,na.rm=TRUE)`
+
+------------------------------------------------------------------------
+
+14. ¿Cuantos apartamentos hay en cada uno de esos barrios?
+
+Mostrar una dataframe con el nombre del barrio, el precio y el número de entradas.
+
+Ayuda: Podeis crear un nuevo dataframe con las columnas "Barrio" y "Freq" que contenga el número de entradas en cada barrio y hacer un merge con el dataframe del punto anterior.
+
+------------------------------------------------------------------------
+
+15. Partiendo del dataframe anterior, muestra los 5 barrios con mayor precio, pero que tengan más de 100 entradas de alquiler.
+
+------------------------------------------------------------------------
+
+16. Dibuja el diagrama de densidad de distribución de los diferentes precios. Serían 5 gráficas, una por cada barrio.
+
+------------------------------------------------------------------------
+
+17. Calcula el tamaño medio, en metros cuadrados, para los 5 barrios anteriores y muestralo en el mismo dataframe junto con el precio y número de entradas
+
+------------------------------------------------------------------------
+
+18. Dibuja el diagrama de densidad de distribución de los diferentes tamaños de apartamentos. Serían 5 gráficas, una por cada barrio.
+
+------------------------------------------------------------------------
+
+19. Esta claro que las medias de metros cuadrados de cada uno de estos 5 barrios parecen ser diferentes, pero ¿son estadísticamente diferentes? ¿Que test habría que usar para comprobarlo?
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+Para únicamente los pisos de alquiler en el barrio de Sol:
+
+`barrio_sol<-subset(airbnb_entire,Barrio=="Sol")`
+
+Calcular un modelo lineal que combine alguna de estas variables: \* NumBanyos \* NumDormitorios \* MaxOcupantes \* MetrosCuadrados
+
+20. Primero calculamos la correlación para ver como se relacionan estas variables entre sí.
+
+------------------------------------------------------------------------
+
+21. Se observa que la correlación entre el número de dormitorios y los metros cuadrados es sorprendentemente baja. ¿Son de fiar esos números?
+
+Mediante un histograma o curvas de densidad podemos descartar números que notienen sentido en el dataframe barrio_sol, para tener una matriz de correlación que tenga mayor sentido.
+
+------------------------------------------------------------------------
+
+22. Una vez que hayamos filtrado los datos correspondientes calcular el valor o la combinación de valores que mejor nos permite obtener el precio de un inmueble.
+
+¿Que variable es más fiable para conocer el precio de un inmueble, el número de habitaciones o los metros cuadrados?
+
+------------------------------------------------------------------------
+
+23. Responde con su correspondiente margen de error del 95%, ¿cuantos euros incrementa el precio del alquiler por cada metro cuadrado extra del piso?
+
+------------------------------------------------------------------------
+
+24. Responde con su correspondiente margen de error del 95%, ¿cuantos euros incrementa el precio del alquiler por cada habitación?
+
+------------------------------------------------------------------------
+
+25. ¿Cual es la probabilidad de encontrar, en el barrio de Sol, un apartamento en alquiler con 3 dormitorios? ¿Cual es el intervalo de confianza de esa probabilidad?
+
+------------------------------------------------------------------------
